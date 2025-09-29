@@ -5,21 +5,20 @@ from plots import *
 data = generate_data()
 results, results_data = execute_regressions(data)
 
-st.set_page_config(page_title="Simpson's Paradox", layout="wide")
+st.set_page_config(page_title="Geospatial Analysis of Hospitals in Peru", layout="wide")
 
-tab1, tab2, tab3 = st.tabs(["Simpson's Paradox", "Code", "References"])
+tab1, tab2, tab3 = st.tabs(["Data Description", "Static Maps & Department Analysis", "Dynamic Maps"])
 
 with tab1:
 
         st.markdown(
 """
-# Simpson's Paradox Explained
+# Data Description
 
-Simpson's paradox posits that, when we calculate correlations in aggregated data for a given population, we may fin a positive (negative) correlation, but when the data are disaggregated, the correlation may have the opposite sign.
+Unit of analysis: operational public hospitals in Peru.
+Data sources: MINSA - IPRESS (operational subset), Population Centers.
+Filtering rules: only operational hospitals with valid lat/long.
 
-In this case, we simulate data such that we have a confounding variable, namely age. If age has an effect both exercise and cholesterol, not taking it into account when performing our estimation will will render us a biased estimator of the correlation between cholesterol and exercise. In this case, the bias is large enough that it reverts the sign: our correlation initially is positive, but when we segregate by age, the correlation is negative.
-
-The data generating process is illustrated by the DAG further down bellow.
 """
         )
         col1, col2 = st.columns([1, 2])
@@ -53,17 +52,21 @@ The data generating process is illustrated by the DAG further down bellow.
 
 with tab2:
         st.markdown("""
-### Code
 
-Our code is hosted in the following GithHub repository: https://github.com/RodrigoGrijalba/python-dashboard-class
+# Static Maps & Department Analysis
+
+Embed static maps created with GeoPandas.
+Include the department summary table and bar chart.                  
+
 """
 )
 
 with tab3:
         st.markdown("""
-### References:
+# Dynamic Maps:
 
-Glymour, Madelyn, Judea Pearl, and Nicholas P. Jewell. Causal inference in statistics: A primer. John Wiley & Sons, 2016. 
+National Folium choropleth + markers.
+Folium proximity maps for Lima & Loreto.                    
 """
 )
 
