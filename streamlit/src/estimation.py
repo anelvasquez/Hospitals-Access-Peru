@@ -11,24 +11,27 @@ def load_and_filter_ipress(filepath):
     # Cargar datos
     df = pd.read_csv(filepath, encoding='utf-8', low_memory=False)
     
-    # Filtrar hospitales operativos
-    # Ajusta el nombre de la columna según tu dataset
-    df_operational = df[df['estado'].str.upper() == 'ACTIVO'].copy()
+    # Filtrar hospitales operativos (Estado = ACTIVO)
+    df_operational = df[df['Estado'].str.upper() == 'ACTIVO'].copy()
     
     # Filtrar solo registros con coordenadas válidas
-    df_operational = df_operational.dropna(subset=['latitud', 'longitud'])
+    df_operational = df_operational.dropna(subset=['NORTE', 'ESTE'])
     df_operational = df_operational[
-        (df_operational['latitud'] != 0) & 
-        (df_operational['longitud'] != 0)
+        (df_operational['NORTE'] != 0) & 
+        (df_operational['ESTE'] != 0)
     ]
     
-    # Convertir a GeoDataFrame
+    # Convertir UTM a lat/lon (asumiendo zona 18S para Perú)
+    # NORTE = latitud UTM, ESTE = longitud UTM
     gdf = gpd.GeoDataFrame(
         df_operational,
-        geometry=gpd.points_from_xy(df_operational['longitud'], 
-                                     df_operational['latitud']),
-        crs='EPSG:4326'
+        geometry=gpd.points_from_xy(df_operational['ESTE'], 
+                                     df_operational['NORTE']),
+        crs='EPSG:32718'  # UTM Zona 18S
     )
+    
+    # Convertir a coordenadas geográficas
+    gdf = gdf.to_crs('EPSG:4326')
     
     return gdf
 
@@ -54,8 +57,8 @@ def get_data_summary(gdf_hospitals):
     """
     summary = {
         'total_hospitals': len(gdf_hospitals),
-        'departments': gdf_hospitals['departamento'].nunique(),
-        'provinces': gdf_hospitals['provincia'].nunique(),
-        'districts': gdf_hospitals['distrito'].nunique()
+        'departments': gdf_hospitals['Departamento'].nunique(),
+        'provinces': gdf_hospitals['Provincia'].nunique(),
+        'districts': gdf_hospitals['Distrito'].nunique()
     }
     return summary
