@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perú")
+st.title("🏥 Análisis de Hospitales Operativos en Perús")
 
 # Crear tabs
 tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
