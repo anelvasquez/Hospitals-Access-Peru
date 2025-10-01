@@ -4,16 +4,16 @@ from plots import create_hospital_map, create_department_bar
 
 # Configuración de página
 st.set_page_config(
-    page_title="Hospitales en Perú",
+    page_title="Hospitales en Perúxxxxx",
     page_icon="🏥",
     layout="wide"
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perú")
+st.title("🏥 Análisis de Hospitales Operativos en Perúxxxxxx")
 
 # Crear tabs
-tab1, tab2, tab3 = st.tabs(["🗂️ Descripción de Datos", "📊 Análisis", "🗺️ Mapa"])
+tab1, tab2, tab3 = st.tabs(["🗂️ Descripción de xxxxxDatos", "📊 Análisisxxxx", "🗺️ Mapa"])
 
 # TAB 1: Descripción de Datos
 with tab1:
