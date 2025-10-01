@@ -15,89 +15,51 @@ def load_and_filter_ipress(filepath):
     - Estado == ACTIVO
     - NORTE/ESTE no nulos ni 0
     Convierte UTM 18S -> WGS84.
-    Incluye diagnósticos para depuración.
     """
-    # Detectar separador (coma o punto y coma)
+    # Detectar separador
     with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
         first = f.readline()
     sep = ";" if first.count(";") > first.count(",") else ","
 
-    # Leer CSV robusto
+    # Leer de forma robusta (saltando filas dañadas)
     df = pd.read_csv(
         filepath,
         sep=sep,
         encoding="utf-8",
         engine="python",
-        on_bad_lines="skip",
-        low_memory=False,
+        on_bad_lines="skip"
+        # ⚠️ Removido 'low_memory' que no es compatible con engine='python'
     )
 
-    # ---------------------------
-    # Diagnósticos iniciales
-    # ---------------------------
-    print("✅ Columnas detectadas:", df.columns.tolist())
+    # Columnas claves (resueltas contra el CSV real)
+    col_estado = _col(df, "Estado")
+    col_norte  = _col(df, "NORTE")
+    col_este   = _col(df, "ESTE")
 
-    try:
-        col_estado = _col(df, "Estado")
-        print(f"📌 Columna 'Estado' encontrada como: {col_estado}")
-        print("Valores únicos en Estado (primeros 20):", df[col_estado].unique()[:20])
-    except Exception as e:
-        print("❌ No se encontró columna Estado:", e)
-        return pd.DataFrame()
-
-    try:
-        col_norte = _col(df, "NORTE")
-        col_este  = _col(df, "ESTE")
-        print(f"📌 Columnas coordenadas: {col_norte}, {col_este}")
-        print("Ejemplo de coordenadas:\n", df[[col_norte, col_este]].head())
-    except Exception as e:
-        print("❌ No se encontraron columnas NORTE/ESTE:", e)
-        return pd.DataFrame()
-
-    # ---------------------------
-    # Filtros
-    # ---------------------------
-
-    # Normalizar Estado
-    df[col_estado] = df[col_estado].astype(str).str.strip().str.upper()
-
-    # Filtrar por ACTIVO (contenga ACTIVO en cualquier variante)
-    df = df[df[col_estado].str.contains("ACTIVO", na=False)]
+    # Filtrar ACTIVO (robusto a espacios/minúsculas)
+    df = df[df[col_estado].astype(str).str.strip().str.upper() == "ACTIVO"]
 
     # Asegurar que NORTE/ESTE sean numéricos
     df[col_norte] = pd.to_numeric(df[col_norte], errors="coerce")
     df[col_este]  = pd.to_numeric(df[col_este],  errors="coerce")
 
-    # Filtrar coordenadas válidas
+    # Coordenadas válidas
     df = df.dropna(subset=[col_norte, col_este])
     df = df[(df[col_norte] != 0) & (df[col_este] != 0)]
 
-    print("✅ Registros después de filtros:", len(df))
+    # GeoDataFrame en UTM 18S -> WGS84
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(df[col_este], df[col_norte]),
+        crs="EPSG:32718",  # UTM 18S
+    ).to_crs("EPSG:4326")
 
-    # ---------------------------
-    # Convertir a GeoDataFrame
-    # ---------------------------
-    if len(df) > 0:
-        gdf = gpd.GeoDataFrame(
-            df,
-            geometry=gpd.points_from_xy(df[col_este], df[col_norte]),
-            crs="EPSG:32718",  # UTM 18S
-        ).to_crs("EPSG:4326")
-        return gdf
-    else:
-        return df  # vacío
+    return gdf
 
 def get_data_summary(gdf):
-    """Resumen simple de métricas."""
-    if gdf is None or len(gdf) == 0:
-        return {
-            "total_hospitals": 0,
-            "departments": 0,
-            "provinces": 0,
-            "districts": 0,
-        }
-
+    """Resumen para métricas."""
     def safe_nunique(colname):
+        # Busca la columna sin depender de mayúsculas
         for c in gdf.columns:
             if c.strip().lower() == colname.strip().lower():
                 return gdf[c].nunique()
@@ -109,12 +71,3 @@ def get_data_summary(gdf):
         "provinces":   safe_nunique("Provincia"),
         "districts":   safe_nunique("Distrito"),
     }
-
-# ---------------------------
-# Uso
-# ---------------------------
-if __name__ == "__main__":
-    file_path = "IPRESS.csv"  # cambia a la ruta real si hace falta
-    gdf = load_and_filter_ipress(file_path)
-    summary = get_data_summary(gdf)
-    print("📊 Resumen:", summary)
