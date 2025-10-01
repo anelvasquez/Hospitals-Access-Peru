@@ -122,40 +122,40 @@ with tab1:
                 break
         
         if col_dept:
-            dept_counts = gdf_hospitals[col_dept].value_counts().sort_values(ascending=True)
+            dept_counts = gdf_hospitals[col_dept].value_counts().sort_values(ascending=False)
             
             import plotly.graph_objects as go
             
             fig = go.Figure(data=[
                 go.Bar(
-                    y=dept_counts.index,
-                    x=dept_counts.values,
-                    orientation='h',
+                    x=dept_counts.index,
+                    y=dept_counts.values,
                     marker=dict(
                         color='#60a5fa',
                         line=dict(color='#2563eb', width=1)
                     ),
                     text=dept_counts.values,
                     textposition='outside',
-                    textfont=dict(size=11, color='white')
+                    textfont=dict(size=12, color='white')
                 )
             ])
             
             fig.update_layout(
-                height=600,
-                margin=dict(l=120, r=40, t=20, b=40),
+                height=500,
+                margin=dict(l=40, r=40, t=40, b=120),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 xaxis=dict(
                     title="",
-                    showgrid=True,
-                    gridcolor='rgba(128,128,128,0.2)',
+                    showgrid=False,
                     showline=False,
-                    tickfont=dict(color='white', size=10)
+                    tickfont=dict(color='white', size=11),
+                    tickangle=-45
                 ),
                 yaxis=dict(
                     title="",
-                    showgrid=False,
+                    showgrid=True,
+                    gridcolor='rgba(128,128,128,0.2)',
                     showline=False,
                     tickfont=dict(color='white', size=11)
                 ),
