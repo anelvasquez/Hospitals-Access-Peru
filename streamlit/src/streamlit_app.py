@@ -14,7 +14,7 @@ st.set_page_config(
 st.title("🏥 Análisis de Hospitales Operativos en Perúxxx")
 
 # Crear tabs
-tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datosxxx", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
+tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
 
 # TAB 1: Data Description
 with tab1:
