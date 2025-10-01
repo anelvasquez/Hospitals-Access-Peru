@@ -27,7 +27,7 @@ def create_department_bar(gdf_hospitals):
     """
     Gráfico de barras por departamento
     """
-    dept_counts = gdf_hospitals['Departamento'].value_counts().head(10)
+    dept_counts = gdf_hospitals['Departamento'].dropna().value_counts().head(10)
     
     fig = go.Figure(data=[
         go.Bar(x=dept_counts.values, 
