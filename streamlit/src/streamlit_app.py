@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import geopandas as gpd
 from estimation import load_and_filter_ipress, get_data_summary, get_departments_list
 from plots import create_hospital_map, create_department_bar
 
@@ -263,18 +264,143 @@ with tab1:
 with tab2:
     st.header("📊 Análisis Estático de Mapas y Departamentos")
     
-    if 'gdf_filtered' in st.session_state:
-        try:
-            st.info("🚧 Mapas estáticos con GeoPandas (próximamente)")
-            
-            # Gráfico de barras por departamento
-            bar_chart = create_department_bar(st.session_state['gdf_hospitals'])
-            st.plotly_chart(bar_chart, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"Error: {e}")
-    else:
+    if 'gdf_hospitals' not in st.session_state:
         st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
+    else:
+        gdf_hospitals = st.session_state['gdf_hospitals']
+        
+        # Importar funciones necesarias
+        from estimation import count_hospitals_by_district
+        import matplotlib.pyplot as plt
+        
+        # Cargar shapefile de distritos
+        @st.cache_data
+        def load_districts_shapefile():
+            shp_path = '../data/distritos.shp'
+            if not os.path.exists(shp_path):
+                shp_path = 'data/distritos.shp'
+            if not os.path.exists(shp_path):
+                raise FileNotFoundError("No se encontró el shapefile distritos.shp")
+            return gpd.read_file(shp_path)
+        
+        try:
+            with st.spinner('Cargando shapefile de distritos...'):
+                gdf_districts = load_districts_shapefile()
+            
+            st.success(f"✅ Shapefile cargado: {len(gdf_districts)} distritos")
+            
+            # Contar hospitales por distrito
+            hospitals_by_district = count_hospitals_by_district(gdf_hospitals)
+            
+            st.subheader("📋 Tabla Resumen por Departamento")
+            
+            # Tabla agrupada por departamento
+            col_dept = None
+            for c in gdf_hospitals.columns:
+                if c.strip().lower() == "departamento":
+                    col_dept = c
+                    break
+            
+            if col_dept:
+                dept_summary = gdf_hospitals.groupby(col_dept).size().reset_index(name='Número de Hospitales')
+                dept_summary = dept_summary.sort_values('Número de Hospitales', ascending=False)
+                
+                # Mostrar en dos columnas: tabla y gráfico
+                col_table, col_chart = st.columns([1, 1])
+                
+                with col_table:
+                    st.dataframe(
+                        dept_summary,
+                        use_container_width=True,
+                        height=400,
+                        hide_index=True
+                    )
+                
+                with col_chart:
+                    # Gráfico de barras horizontales (top 10)
+                    top10 = dept_summary.head(10)
+                    
+                    import plotly.graph_objects as go
+                    fig = go.Figure(data=[
+                        go.Bar(
+                            y=top10[col_dept],
+                            x=top10['Número de Hospitales'],
+                            orientation='h',
+                            marker=dict(color='#f97316')
+                        )
+                    ])
+                    
+                    fig.update_layout(
+                        title="Top 10 Departamentos",
+                        height=400,
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        yaxis=dict(autorange="reversed"),
+                        showlegend=False
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            st.divider()
+            
+            # Mapa estático
+            st.subheader("🗺️ Mapa de Distribución por Distrito")
+            
+            # Preparar datos para el merge
+            # Necesitamos identificar la columna clave en el shapefile
+            st.info(f"Columnas en shapefile: {', '.join(gdf_districts.columns[:10].tolist())}")
+            
+            # Buscar columna UBIGEO o similar
+            ubigeo_col = None
+            for col in gdf_districts.columns:
+                if 'UBIGEO' in col.upper() or 'CODIGO' in col.upper():
+                    ubigeo_col = col
+                    break
+            
+            if ubigeo_col and 'UBIGEO' in hospitals_by_district.columns:
+                # Merge por UBIGEO
+                gdf_merged = gdf_districts.merge(
+                    hospitals_by_district[['UBIGEO', 'n_hospitales']],
+                    left_on=ubigeo_col,
+                    right_on='UBIGEO',
+                    how='left'
+                )
+                gdf_merged['n_hospitales'] = gdf_merged['n_hospitales'].fillna(0)
+                
+                # Crear mapa con matplotlib
+                fig, ax = plt.subplots(1, 1, figsize=(12, 14))
+                
+                gdf_merged.plot(
+                    column='n_hospitales',
+                    cmap='YlOrRd',
+                    linewidth=0.5,
+                    edgecolor='white',
+                    legend=True,
+                    ax=ax,
+                    legend_kwds={
+                        'label': "Número de Hospitales",
+                        'orientation': "vertical",
+                        'shrink': 0.8
+                    }
+                )
+                
+                ax.set_title('Distribución de Hospitales por Distrito', fontsize=16, pad=20)
+                ax.axis('off')
+                
+                st.pyplot(fig)
+                
+            else:
+                st.warning("⚠️ No se pudo hacer el merge. Revisa las columnas del shapefile.")
+                st.write("Columnas del shapefile:", gdf_districts.columns.tolist())
+                st.write("Columnas de hospitales:", hospitals_by_district.columns.tolist())
+            
+        except FileNotFoundError as e:
+            st.error(f"❌ {str(e)}")
+            st.info("💡 Asegúrate de que el archivo distritos.shp esté en la carpeta data/")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            import traceback
+            with st.expander("Ver error completo"):
+                st.code(traceback.format_exc())
 
 # TAB 3: Mapas Dinámicos
 with tab3:
