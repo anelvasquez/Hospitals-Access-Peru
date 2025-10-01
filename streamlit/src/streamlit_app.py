@@ -14,7 +14,7 @@ st.set_page_config(
 st.title("🏥 Análisis de Hospitales Operativos en Perú")
 
 # Crear tabs
-tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datoss", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
+tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
 
 # TAB 1: Data Description
 with tab1:
@@ -83,38 +83,86 @@ with tab1:
         
         st.success(f'✅ Datos cargados: {len(gdf_hospitals)} hospitales con coordenadas válidas')
         
-        # Métricas principales
+        # Métricas principales en 3 columnas
         st.subheader("📊 Resumen de Datos")
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             st.metric(
-                label="🏥 Total Hospitales",
+                label="🏥 Total de Hospitales",
                 value=f"{summary['total_hospitals']:,}",
-                help="Hospitales con coordenadas válidas"
+                help="Total de hospitales con coordenadas válidas"
             )
         
         with col2:
             st.metric(
                 label="📍 Departamentos",
                 value=summary['departments'],
-                help="Número de departamentos con hospitales"
+                help="Número de departamentos cubiertos"
             )
         
         with col3:
             st.metric(
-                label="🗺️ Provincias",
-                value=summary['provinces'],
-                help="Número de provincias cubiertas"
-            )
-        
-        with col4:
-            st.metric(
                 label="🏘️ Distritos",
                 value=summary['districts'],
-                help="Número de distritos con servicios"
+                help="Número de distritos con hospitales"
             )
+        
+        st.divider()
+        
+        # Gráfico de distribución por departamento
+        st.subheader("📊 Distribución por Distrito")
+        
+        # Obtener conteo por departamento
+        col_dept = None
+        for c in gdf_hospitals.columns:
+            if c.strip().lower() == "departamento":
+                col_dept = c
+                break
+        
+        if col_dept:
+            dept_counts = gdf_hospitals[col_dept].value_counts().sort_values(ascending=True)
+            
+            import plotly.graph_objects as go
+            
+            fig = go.Figure(data=[
+                go.Bar(
+                    y=dept_counts.index,
+                    x=dept_counts.values,
+                    orientation='h',
+                    marker=dict(
+                        color='#60a5fa',
+                        line=dict(color='#2563eb', width=1)
+                    ),
+                    text=dept_counts.values,
+                    textposition='outside',
+                    textfont=dict(size=11, color='white')
+                )
+            ])
+            
+            fig.update_layout(
+                height=600,
+                margin=dict(l=120, r=40, t=20, b=40),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    title="",
+                    showgrid=True,
+                    gridcolor='rgba(128,128,128,0.2)',
+                    showline=False,
+                    tickfont=dict(color='white', size=10)
+                ),
+                yaxis=dict(
+                    title="",
+                    showgrid=False,
+                    showline=False,
+                    tickfont=dict(color='white', size=11)
+                ),
+                font=dict(color='white')
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
         
         st.divider()
         
