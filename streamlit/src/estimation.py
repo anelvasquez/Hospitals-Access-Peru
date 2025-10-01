@@ -98,3 +98,35 @@ def get_departments_list(gdf):
         if c.strip().lower() == "departamento":
             return sorted(gdf[c].dropna().unique().tolist())
     return []
+
+def count_hospitals_by_district(gdf):
+    """Cuenta hospitales por distrito y retorna un DataFrame."""
+    # Buscar columnas de ubicación
+    col_dept = None
+    col_prov = None
+    col_dist = None
+    col_ubigeo = None
+    
+    for c in gdf.columns:
+        c_lower = c.strip().lower()
+        if c_lower == "departamento":
+            col_dept = c
+        elif c_lower == "provincia":
+            col_prov = c
+        elif c_lower == "distrito":
+            col_dist = c
+        elif c_lower == "ubigeo":
+            col_ubigeo = c
+    
+    if not col_dist:
+        return pd.DataFrame()
+    
+    # Contar por distrito
+    counts = gdf.groupby([col_dept, col_prov, col_dist]).size().reset_index(name='n_hospitales')
+    
+    # Agregar UBIGEO si existe
+    if col_ubigeo:
+        ubigeo_map = gdf.groupby(col_dist)[col_ubigeo].first().to_dict()
+        counts['UBIGEO'] = counts[col_dist].map(ubigeo_map)
+    
+    return counts
