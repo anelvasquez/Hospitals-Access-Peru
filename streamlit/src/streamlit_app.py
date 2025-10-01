@@ -11,18 +11,18 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perú")
+st.title("🏥 Análisis de Hospitales Operativos en Perúxxx")
 
 # Crear tabs
-tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos, "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
+tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datosxxx", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
 
 # TAB 1: Data Description
 with tab1:
-    st.header("📋 Descripción de Datosxxxx")
+    st.header("📋 Descripción de Datos")
     
     # Unidad de Análisis
     st.subheader("Unidad de Análisis")
-    st.markdown("**Hospitales públicos operatssssivos** en el Perú")
+    st.markdown("**Hospitales públicos operativos** en el Perú")
     
     st.divider()
     
@@ -204,4 +204,4 @@ with tab3:
         except Exception as e:
             st.error(f"Error: {e}")
     else:
-        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción 
+        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
