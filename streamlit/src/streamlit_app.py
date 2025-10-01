@@ -1,24 +1,17 @@
 import streamlit as st
 import os
-import geopandas as gpd
-import pandas as pd # Añadido por si se usa directamente
-import matplotlib.pyplot as plt # Añadido por si se usa directamente
-import plotly.graph_objects as go # Añadido por si se usa directamente
-
-# CORRECCIÓN CLAVE: Se importa count_hospitals_by_district al inicio
-from estimation import load_and_filter_ipress, get_data_summary, get_departments_list, count_hospitals_by_district
+from estimation import load_and_filter_ipress, get_data_summary, get_departments_list
 from plots import create_hospital_map, create_department_bar
-
 
 # Configuración de página
 st.set_page_config(
-    page_title="Hospitales en Perú",
+    page_title="Hospitales en Perús",
     page_icon="🏥",
     layout="wide"
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perús")
+st.title("🏥 Análisis de Hospitales Operativos en Perú")
 
 # Crear tabs
 tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌐 Mapas Dinámicos"])
@@ -82,9 +75,8 @@ with tab1:
             
             # Verificar si hay datos
             if len(gdf_hospitals) == 0:
-                st.error("❌ No se encontraron datos después del filtrado o faltan columnas clave (UBIGEO, NORTE, ESTE, etc.)")
+                st.error("❌ No se encontraron datos después del filtrado")
                 st.info("🔍 Revisa la terminal/consola para ver los mensajes de debug")
-                # Detener la ejecución si no hay datos.
                 st.stop()
             
             summary = get_data_summary(gdf_hospitals)
@@ -120,7 +112,7 @@ with tab1:
         st.divider()
         
         # Gráfico de distribución por departamento
-        st.subheader("📊 Distribución por Departamento")
+        st.subheader("📊 Distribución por Distrito")
         
         # Obtener conteo por departamento
         col_dept = None
@@ -132,7 +124,8 @@ with tab1:
         if col_dept:
             dept_counts = gdf_hospitals[col_dept].value_counts().sort_values(ascending=False)
             
-            # Usando plotly.graph_objects (ya importado al inicio)
+            import plotly.graph_objects as go
+            
             fig = go.Figure(data=[
                 go.Bar(
                     x=dept_counts.index,
@@ -143,15 +136,10 @@ with tab1:
                     ),
                     text=dept_counts.values,
                     textposition='outside',
-                    # Aseguramos que el texto sea visible
-                    textfont=dict(size=12, color='black' if st.get_option("theme.base") == "light" else 'white') 
+                    textfont=dict(size=12, color='white')
                 )
             ])
             
-            # Ajuste para fondo blanco/oscuro
-            bg_color = 'white' if st.get_option("theme.base") == "light" else 'black'
-            font_color = 'black' if st.get_option("theme.base") == "light" else 'white'
-
             fig.update_layout(
                 height=500,
                 margin=dict(l=40, r=40, t=40, b=120),
@@ -161,7 +149,7 @@ with tab1:
                     title="",
                     showgrid=False,
                     showline=False,
-                    tickfont=dict(color=font_color, size=11),
+                    tickfont=dict(color='white', size=11),
                     tickangle=-45
                 ),
                 yaxis=dict(
@@ -169,9 +157,9 @@ with tab1:
                     showgrid=True,
                     gridcolor='rgba(128,128,128,0.2)',
                     showline=False,
-                    tickfont=dict(color=font_color, size=11)
+                    tickfont=dict(color='white', size=11)
                 ),
-                font=dict(color=font_color)
+                font=dict(color='white')
             )
             
             st.plotly_chart(fig, use_container_width=True)
@@ -190,6 +178,7 @@ with tab1:
         
         # Aplicar filtro
         if selected_dept != "Todos":
+            # Buscar columna Departamento
             col_dept = None
             for c in gdf_hospitals.columns:
                 if c.strip().lower() == "departamento":
@@ -216,7 +205,6 @@ with tab1:
             'Departamento',
             'Provincia',
             'Distrito',
-            'UBIGEO',
             'Categoria',
             'Estado',
             'NORTE',
@@ -271,187 +259,41 @@ with tab1:
             import traceback
             st.code(traceback.format_exc())
 
-# ---
 # TAB 2: Análisis Estático
-# ---
 with tab2:
     st.header("📊 Análisis Estático de Mapas y Departamentos")
     
-    if 'gdf_hospitals' not in st.session_state:
-        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
-    else:
-        gdf_hospitals = st.session_state['gdf_hospitals']
-        
-        # La importación de count_hospitals_by_district ahora está al inicio
-        
-        # Cargar shapefile de distritos
-        @st.cache_data
-        def load_districts_shapefile():
-            shp_path = '../data/distritos.shp'
-            if not os.path.exists(shp_path):
-                shp_path = 'data/distritos.shp'
-            # Necesitas una lista de archivos, ya que los shapefiles vienen con .shx, .dbf, .prj
-            if not os.path.exists(shp_path):
-                raise FileNotFoundError("No se encontró el shapefile distritos.shp")
-            return gpd.read_file(shp_path)
-        
+    if 'gdf_filtered' in st.session_state:
         try:
-            with st.spinner('Cargando shapefile de distritos...'):
-                gdf_districts = load_districts_shapefile()
+            st.info("🚧 Mapas estáticos con GeoPandas (próximamente)")
             
-            st.success(f"✅ Shapefile cargado: {len(gdf_districts)} distritos")
+            # Gráfico de barras por departamento
+            bar_chart = create_department_bar(st.session_state['gdf_hospitals'])
+            st.plotly_chart(bar_chart, use_container_width=True)
             
-            # Contar hospitales por distrito (usa la función ya importada)
-            hospitals_by_district = count_hospitals_by_district(gdf_hospitals)
-            
-            st.subheader("📋 Tabla Resumen por Departamento")
-            
-            # Tabla agrupada por departamento
-            col_dept = None
-            for c in gdf_hospitals.columns:
-                if c.strip().lower() == "departamento":
-                    col_dept = c
-                    break
-            
-            if col_dept:
-                dept_summary = gdf_hospitals.groupby(col_dept).size().reset_index(name='Número de Hospitales')
-                dept_summary = dept_summary.sort_values('Número de Hospitales', ascending=False)
-                
-                # Mostrar en dos columnas: tabla y gráfico
-                col_table, col_chart = st.columns([1, 1])
-                
-                with col_table:
-                    st.dataframe(
-                        dept_summary,
-                        use_container_width=True,
-                        height=400,
-                        hide_index=True
-                    )
-                
-                with col_chart:
-                    # Gráfico de barras horizontales (top 10)
-                    top10 = dept_summary.head(10)
-                    
-                    # Usando plotly.graph_objects
-                    fig = go.Figure(data=[
-                        go.Bar(
-                            y=top10[col_dept].str.wrap(15).str.replace('\n', '<br>'),
-                            x=top10['Número de Hospitales'],
-                            orientation='h',
-                            marker=dict(color='#f97316')
-                        )
-                    ])
-                    
-                    fig.update_layout(
-                        title="Top 10 Departamentos",
-                        height=400,
-                        margin=dict(l=10, r=10, t=40, b=10),
-                        yaxis=dict(autorange="reversed"),
-                        showlegend=False,
-                        # Aseguramos consistencia de color
-                        font=dict(color=font_color)
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            st.divider()
-            
-            # Mapa estático
-            st.subheader("🗺️ Mapa de Distribución por Distrito")
-            
-            # Lógica de merge para el mapa
-            if hospitals_by_district.empty:
-                st.warning("⚠️ No se pudo generar la tabla de conteo por UBIGEO para el mapa.")
-                st.info("Asegúrate de que la columna **UBIGEO** exista en tu archivo IPRESS.xlsx.")
-            else:
-                # Buscar columna UBIGEO o similar en el shapefile (la clave para el merge)
-                ubigeo_col_shp = None
-                for col in gdf_districts.columns:
-                    if 'UBIGEO' in col.upper() or 'CODIGO' in col.upper() or 'COD' in col.upper():
-                        ubigeo_col_shp = col
-                        break
-                
-                if ubigeo_col_shp:
-                    # Merge por UBIGEO
-                    # Aseguramos que las columnas de merge sean strings
-                    gdf_districts[ubigeo_col_shp] = gdf_districts[ubigeo_col_shp].astype(str).str.strip()
-                    hospitals_by_district['UBIGEO'] = hospitals_by_district['UBIGEO'].astype(str).str.strip()
-
-                    gdf_merged = gdf_districts.merge(
-                        hospitals_by_district[['UBIGEO', 'n_hospitales']],
-                        left_on=ubigeo_col_shp,
-                        right_on='UBIGEO',
-                        how='left'
-                    )
-                    gdf_merged['n_hospitales'] = gdf_merged['n_hospitales'].fillna(0)
-                    
-                    # Crear mapa con matplotlib
-                    fig, ax = plt.subplots(1, 1, figsize=(12, 14))
-                    
-                    gdf_merged.plot(
-                        column='n_hospitales',
-                        cmap='YlOrRd',
-                        linewidth=0.5,
-                        edgecolor='white',
-                        legend=True,
-                        ax=ax,
-                        legend_kwds={
-                            'label': "Número de Hospitales",
-                            'orientation': "vertical",
-                            'shrink': 0.8
-                        }
-                    )
-                    
-                    ax.set_title('Distribución de Hospitales por Distrito', fontsize=16, pad=20, color=font_color)
-                    ax.axis('off')
-                    fig.patch.set_facecolor(bg_color)
-                    
-                    st.pyplot(fig)
-                    
-                else:
-                    st.warning("⚠️ No se pudo hacer el merge. No se encontró la columna UBIGEO en el shapefile.")
-                    st.info(f"Columnas del shapefile: {gdf_districts.columns.tolist()}")
-            
-        except FileNotFoundError as e:
-            st.error(f"❌ {str(e)}")
-            st.info("💡 Asegúrate de que el archivo distritos.shp (y sus archivos auxiliares .shx, .dbf, etc.) estén en la carpeta data/")
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-            with st.expander("Ver error completo"):
-                import traceback
-                st.code(traceback.format_exc())
+            st.error(f"Error: {e}")
+    else:
+        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
 
-# ---
 # TAB 3: Mapas Dinámicos
-# ---
 with tab3:
     st.header("🌐 Mapas Dinámicos")
     
     st.markdown("""
-    - **National Folium choropleth + markers**: Mapa nacional con coropletas y marcadores (Implementación pendiente)
-    - **Folium proximity maps for Lima & Loreto**: Mapas de proximidad para Lima y Loreto (Implementación pendiente)
+    - **National Folium choropleth + markers**: Mapa nacional con coropletas y marcadores
+    - **Folium proximity maps for Lima & Loreto**: Mapas de proximidad para Lima y Loreto
     """)
     
     if 'gdf_filtered' in st.session_state:
         try:
-            st.info(f"Mostrando mapa básico para {len(st.session_state['gdf_filtered'])} registros.")
+            st.info("🚧 Mapas interactivos con Folium (próximamente)")
             
-            # Mapa básico (asumo que create_hospital_map devuelve un objeto Plotly o similar)
-            # Nota: Si create_hospital_map usa Folium, necesitarás usar st_folium o st.components.v1.html
-            # Usaremos st.map como solución simple si no tienes Plotly/Folium complejos
-            gdf_map = st.session_state['gdf_filtered']
-            
-            st.subheader("Mapa Interactivo (Streamlit Map)")
-
-            st.map(
-                data=pd.DataFrame({
-                    'lat': gdf_map.geometry.y,
-                    'lon': gdf_map.geometry.x
-                }),
-                zoom=5
-            )
+            # Mapa básico
+            map_fig = create_hospital_map(st.session_state['gdf_filtered'])
+            st.plotly_chart(map_fig, use_container_width=True)
             
         except Exception as e:
-            st.error(f"Error al generar mapa: {e}")
+            st.error(f"Error: {e}")
     else:
         st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
