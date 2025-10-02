@@ -7,7 +7,7 @@ matplotlib.use('Agg')  # Backend para Streamlit
 
 # Configuración de página
 st.set_page_config(
-    page_title="Hospitales en Perú",
+    page_title="Hospitales en Perús",
     page_icon="🏥",
     layout="wide"
 )
@@ -402,24 +402,126 @@ with tab2:
                 import traceback
                 st.code(traceback.format_exc())
 
-# TAB 3: Mapas Dinámicos (SIN CAMBIOS)
+# TAB 3: Mapas Dinámicos
 with tab3:
-    st.header("🌍 Mapas Dinámicos")
+    st.header("🌍 Mapas Dinámicos con Folium")
     
-    st.markdown("""
-    - **National Folium choropleth + markers**: Mapa nacional con coropletas y marcadores
-    - **Folium proximity maps for Lima & Loreto**: Mapas de proximidad para Lima y Loreto
-    """)
-    
-    if 'gdf_filtered' in st.session_state:
+    if 'gdf_hospitals' not in st.session_state:
+        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
+    else:
         try:
-            st.info("🚧 Mapas interactivos con Folium (próximamente)")
+            # Cargar shapefile si no está cargado
+            if 'gdf_districts_merged' not in locals():
+                @st.cache_data
+                def load_districts_tab3():
+                    shapefile_path = '../data/v_distritos_2023.shp'
+                    if not os.path.exists(shapefile_path):
+                        shapefile_path = 'data/v_distritos_2023.shp'
+                    if not os.path.exists(shapefile_path):
+                        raise FileNotFoundError("No se encontró v_distritos_2023.shp")
+                    
+                    from estimation import load_districts_shapefile, merge_hospitals_with_districts
+                    gdf_dist = load_districts_shapefile(shapefile_path)
+                    gdf_merged = merge_hospitals_with_districts(
+                        st.session_state['gdf_hospitals'], 
+                        gdf_dist
+                    )
+                    return gdf_dist, gdf_merged
+                
+                gdf_districts, gdf_districts_merged = load_districts_tab3()
             
-            # Mapa básico
-            map_fig = create_hospital_map(st.session_state['gdf_filtered'])
-            st.plotly_chart(map_fig, use_container_width=True)
+            # MAPA 1: Coropleta Nacional con Marcadores
+            st.subheader("🗺️ Mapa Nacional: Coropleta + Marcadores de Hospitales")
+            st.markdown("Mapa interactivo que muestra la densidad de hospitales por distrito (coropleta en verde) y la ubicación exacta de cada hospital (marcadores agrupados).")
+            
+            with st.spinner('Generando mapa nacional interactivo...'):
+                from plots import create_national_folium_choropleth
+                from streamlit_folium import folium_static
+                
+                map_national = create_national_folium_choropleth(
+                    gdf_districts_merged,
+                    st.session_state['gdf_hospitals']
+                )
+                
+                folium_static(map_national, width=1200, height=600)
+            
+            st.info("💡 Haz clic en los clusters verdes para expandir y ver hospitales individuales. Puedes hacer zoom y navegar por todo el país.")
+            
+            st.divider()
+            
+            # MAPAS DE PROXIMIDAD
+            st.subheader("📍 Mapas de Proximidad por Región")
+            st.markdown("Los círculos de proximidad muestran el área de cobertura estimada de cada hospital. El radio varía según la densidad poblacional de la región.")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 🔴 Lima - Alta Densidad")
+                st.markdown("**Radio de cobertura: 2.5 km**")
+                st.markdown("Lima tiene alta concentración de hospitales debido a la densidad poblacional.")
+                
+                with st.spinner('Generando mapa de Lima...'):
+                    from plots import create_proximity_map_lima
+                    
+                    map_lima = create_proximity_map_lima(
+                        st.session_state['gdf_hospitals'],
+                        gdf_districts
+                    )
+                    
+                    folium_static(map_lima, width=550, height=500)
+            
+            with col2:
+                st.markdown("### 🔵 Loreto - Baja Densidad")
+                st.markdown("**Radio de cobertura: 10 km**")
+                st.markdown("Loreto tiene menor densidad de hospitales por la dispersión geográfica y poblacional.")
+                
+                with st.spinner('Generando mapa de Loreto...'):
+                    from plots import create_proximity_map_loreto
+                    
+                    map_loreto = create_proximity_map_loreto(
+                        st.session_state['gdf_hospitals'],
+                        gdf_districts
+                    )
+                    
+                    folium_static(map_loreto, width=550, height=500)
+            
+            st.divider()
+            
+            # Comparación de densidades
+            st.subheader("📊 Comparación de Densidad")
+            
+            # Calcular estadísticas
+            col_dept = None
+            for c in st.session_state['gdf_hospitals'].columns:
+                if c.strip().lower() == 'departamento':
+                    col_dept = c
+                    break
+            
+            if col_dept:
+                lima_count = len(st.session_state['gdf_hospitals'][
+                    st.session_state['gdf_hospitals'][col_dept] == 'LIMA'
+                ])
+                loreto_count = len(st.session_state['gdf_hospitals'][
+                    st.session_state['gdf_hospitals'][col_dept] == 'LORETO'
+                ])
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("🏥 Hospitales Lima", lima_count)
+                
+                with col2:
+                    st.metric("📍 Radio Lima", "2.5 km")
+                
+                with col3:
+                    st.metric("🏥 Hospitales Loreto", loreto_count)
+                
+                with col4:
+                    st.metric("📍 Radio Loreto", "10 km")
             
         except Exception as e:
-            st.error(f"Error: {e}")
-    else:
-        st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
+            st.error(f"❌ Error: {str(e)}")
+            
+            with st.expander("Ver error completos"):
+                import traceback
+                st.code(traceback.format_exc())
