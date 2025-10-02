@@ -272,11 +272,12 @@ with tab2:
             # Cargar shapefile de distritos
             @st.cache_data
             def load_districts():
-                shapefile_path = '../data/distritos.shp'
+                # Buscar v_distritos_2023.shp
+                shapefile_path = '../data/v_distritos_2023.shp'
                 if not os.path.exists(shapefile_path):
-                    shapefile_path = 'data/distritos.shp'
+                    shapefile_path = 'data/v_distritos_2023.shp'
                 if not os.path.exists(shapefile_path):
-                    raise FileNotFoundError("No se encontró distritos.shp")
+                    raise FileNotFoundError("No se encontró v_distritos_2023.shp")
                 
                 from estimation import load_districts_shapefile, merge_hospitals_with_districts
                 gdf_dist = load_districts_shapefile(shapefile_path)
@@ -387,8 +388,12 @@ with tab2:
                         )
             
         except FileNotFoundError as e:
-            st.error("❌ No se encontró el archivo distritos.shp")
+            st.error("❌ No se encontró el archivo v_distritos_2023.shp")
             st.info("💡 Asegúrate de que el shapefile esté en la carpeta **data/** con sus archivos asociados (.shp, .shx, .dbf, .prj)")
+            
+            with st.expander("🔍 Debug: Archivos buscados"):
+                st.write("Buscando en:")
+                st.code("../data/v_distritos_2023.shp\ndata/v_distritos_2023.shp")
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
