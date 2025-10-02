@@ -167,19 +167,30 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
         print(f"No se encontraron distritos para {department_name}")
         return None
     
-    # Crear mapa más grande con mejor aspect ratio
-    fig, ax = plt.subplots(1, 1, figsize=(16, 14))
+    # Calcular aspect ratio basado en los límites del departamento
+    minx, miny, maxx, maxy = gdf_dist_dept.total_bounds
+    width = maxx - minx
+    height = maxy - miny
+    aspect = width / height if height > 0 else 1
     
-    # Dibujar distritos con mejor contraste
+    # Ajustar figsize para mantener proporciones
+    if aspect > 1:
+        figsize = (14, 14/aspect)
+    else:
+        figsize = (14*aspect, 14)
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    
+    # Dibujar distritos con paleta azul
     gdf_dist_dept.plot(
         ax=ax,
-        color='#e8f4f8',
-        edgecolor='#2c3e50',
+        color='#e3f2fd',
+        edgecolor='#1976d2',
         linewidth=0.8,
         alpha=0.6
     )
     
-    # Dibujar hospitales con puntos más grandes
+    # Dibujar hospitales con puntos verdes
     if len(gdf_hosp_dept) > 0:
         gdf_hosp_dept.plot(
             ax=ax,
@@ -194,14 +205,11 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
     ax.set_title(f'Hospitales en {department_name}\n({len(gdf_hosp_dept)} hospitales)', 
                  fontsize=22, fontweight='bold', pad=25)
     
-    # Remover ejes pero mantener el mapa
+    # Remover ejes
     ax.set_axis_off()
     
-    # Ajustar límites al departamento
-    minx, miny, maxx, maxy = gdf_dist_dept.total_bounds
+    # Ajustar límites al departamento con margen
     margin = 0.05
-    width = maxx - minx
-    height = maxy - miny
     ax.set_xlim(minx - margin * width, maxx + margin * width)
     ax.set_ylim(miny - margin * height, maxy + margin * height)
     
