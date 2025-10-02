@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perús")
+st.title("🏥 Análisis de Hospitales Operativos en Perú")
 
 # Crear tabs
 tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌍 Mapas Dinámicos"])
@@ -423,9 +423,9 @@ with tab3:
                 gdf_merged = merge_hospitals_with_districts(st.session_state['gdf_hospitals'], gdf_dist)
                 
                 # CCPP
-                ccpp_path = '../data/CCPP_IGN100K.shp'
+                ccpp_path = '../data/centro_poblados.shp'
                 if not os.path.exists(ccpp_path):
-                ccpp_path = 'data/CCPP_IGN100K.shp'
+                    ccpp_path = 'data/centro_poblados.shp'
                 gdf_ccpp = load_ccpp_shapefile(ccpp_path)
                 
                 return gdf_dist, gdf_merged, gdf_ccpp
