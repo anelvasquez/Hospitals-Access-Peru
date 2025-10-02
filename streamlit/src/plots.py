@@ -27,7 +27,7 @@ def create_hospital_map(gdf_hospitals, gdf_districts=None):
 
 def create_department_bar(gdf_hospitals):
     """
-    Gráfico de barras por departamento
+    Gráfico de barras por departamentos
     """
     dept_counts = gdf_hospitals['Departamento'].dropna().value_counts().head(10)
     
