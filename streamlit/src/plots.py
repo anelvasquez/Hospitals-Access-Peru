@@ -11,7 +11,7 @@ def create_hospital_map(gdf_hospitals, gdf_districts=None):
         gdf_hospitals,
         lat=gdf_hospitals.geometry.y,
         lon=gdf_hospitals.geometry.x,
-        hover_name='Nombre del establecimientos',
+        hover_name='Nombre del establecimiento',
         hover_data=['Departamento', 'Provincia', 'Distrito', 'Categoria'],
         zoom=5,
         height=600
@@ -58,7 +58,7 @@ def create_static_choropleth_map(gdf_districts_with_counts, title="Hospitales po
     Returns:
         fig: Figura de matplotlib
     """
-    fig, ax = plt.subplots(1, 1, figsize=(15, 12))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     
     # Mapa coroplético
     gdf_districts_with_counts.plot(
@@ -71,11 +71,11 @@ def create_static_choropleth_map(gdf_districts_with_counts, title="Hospitales po
         legend_kwds={
             'label': "Número de Hospitales",
             'orientation': "vertical",
-            'shrink': 0.5
+            'shrink': 0.6
         }
     )
     
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=15)
     ax.axis('off')
     
     plt.tight_layout()
@@ -162,8 +162,8 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
     else:
         gdf_dist_dept = gdf_districts
     
-    # Crear mapa
-    fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+    # Crear mapa más grande
+    fig, ax = plt.subplots(1, 1, figsize=(14, 12))
     
     # Dibujar distritos
     gdf_dist_dept.plot(
@@ -179,17 +179,17 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
         gdf_hosp_dept.plot(
             ax=ax,
             color='green',
-            markersize=50,
+            markersize=80,
             alpha=0.7
         )
     
     ax.set_title(f'Hospitales en {department_name}\n({len(gdf_hosp_dept)} hospitales)', 
-                 fontsize=14, fontweight='bold', pad=15)
+                 fontsize=18, fontweight='bold', pad=20)
     ax.axis('off')
     
-    # Leyenda
+    # Leyenda más grande
     green_patch = mpatches.Patch(color='green', label=f'Hospitales ({len(gdf_hosp_dept)})')
-    ax.legend(handles=[green_patch], loc='best', fontsize=11)
+    ax.legend(handles=[green_patch], loc='best', fontsize=14)
     
     plt.tight_layout()
     return fig
