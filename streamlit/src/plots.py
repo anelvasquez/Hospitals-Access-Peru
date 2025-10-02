@@ -203,7 +203,7 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
     
     # Título más prominente
     ax.set_title(f'Hospitales en {department_name}\n({len(gdf_hosp_dept)} hospitales)', 
-                 fontsize=22, fontweight='bold', pad=25)
+                 fontsize=14, fontweight='bold', pad=16)
     
     # Remover ejes
     ax.set_axis_off()
