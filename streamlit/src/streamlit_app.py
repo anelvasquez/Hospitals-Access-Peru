@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # Título principal
-st.title("🏥 Análisis de Hospitales Operativos en Perú")
+st.title("🏥 Análisis de Hospitales Operativos en Perús")
 
 # Crear tabs
 tab1, tab2, tab3 = st.tabs(["📂 Descripción de Datos", "📊 Análisis Estático", "🌍 Mapas Dinámicos"])
@@ -410,118 +410,181 @@ with tab3:
         st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
     else:
         try:
-            # Cargar shapefile si no está cargado
-            if 'gdf_districts_merged' not in locals():
-                @st.cache_data
-                def load_districts_tab3():
-                    shapefile_path = '../data/v_distritos_2023.shp'
-                    if not os.path.exists(shapefile_path):
-                        shapefile_path = 'data/v_distritos_2023.shp'
-                    if not os.path.exists(shapefile_path):
-                        raise FileNotFoundError("No se encontró v_distritos_2023.shp")
-                    
-                    from estimation import load_districts_shapefile, merge_hospitals_with_districts
-                    gdf_dist = load_districts_shapefile(shapefile_path)
-                    gdf_merged = merge_hospitals_with_districts(
-                        st.session_state['gdf_hospitals'], 
-                        gdf_dist
-                    )
-                    return gdf_dist, gdf_merged
+            # Cargar shapefiles
+            @st.cache_data
+            def load_all_shapefiles():
+                from estimation import load_districts_shapefile, load_ccpp_shapefile, merge_hospitals_with_districts
                 
-                gdf_districts, gdf_districts_merged = load_districts_tab3()
+                # Distritos
+                shapefile_path = '../data/v_distritos_2023.shp'
+                if not os.path.exists(shapefile_path):
+                    shapefile_path = 'data/v_distritos_2023.shp'
+                gdf_dist = load_districts_shapefile(shapefile_path)
+                gdf_merged = merge_hospitals_with_districts(st.session_state['gdf_hospitals'], gdf_dist)
+                
+                # CCPP
+                ccpp_path = '../data/centro_poblados.shp'
+                if not os.path.exists(ccpp_path):
+                    ccpp_path = 'data/centro_poblados.shp'
+                gdf_ccpp = load_ccpp_shapefile(ccpp_path)
+                
+                return gdf_dist, gdf_merged, gdf_ccpp
             
-            # MAPA 1: Coropleta Nacional con Marcadores
-            st.subheader("🗺️ Mapa Nacional: Coropleta + Marcadores de Hospitales")
-            st.markdown("Mapa interactivo que muestra la densidad de hospitales por distrito (coropleta en verde) y la ubicación exacta de cada hospital (marcadores agrupados).")
+            with st.spinner('📍 Cargando shapefiles...'):
+                gdf_districts, gdf_districts_merged, gdf_ccpp = load_all_shapefiles()
             
-            with st.spinner('Generando mapa nacional interactivo...'):
-                from plots import create_national_folium_choropleth
+            # MAPA 1: Nacional con Marcadores
+            st.subheader("🗺️ Mapa Nacional: Ubicación de Hospitales")
+            st.markdown("Mapa interactivo con marcadores de hospitales agrupados por región.")
+            
+            with st.spinner('Generando mapa nacional...'):
                 from streamlit_folium import folium_static
+                import folium
+                from folium import plugins
                 
-                map_national = create_national_folium_choropleth(
-                    gdf_districts_merged,
-                    st.session_state['gdf_hospitals']
+                m = folium.Map(location=[-9.19, -75.0152], zoom_start=6, tiles='OpenStreetMap')
+                marker_cluster = plugins.MarkerCluster(name='Hospitales').add_to(m)
+                
+                col_nombre = None
+                col_dept = None
+                for c in st.session_state['gdf_hospitals'].columns:
+                    c_lower = c.strip().lower()
+                    if 'nombre' in c_lower and 'establecimiento' in c_lower:
+                        col_nombre = c
+                    elif c_lower == 'departamento':
+                        col_dept = c
+                
+                for idx, row in st.session_state['gdf_hospitals'].head(500).iterrows():
+                    nombre = row[col_nombre] if col_nombre else 'Hospital'
+                    dept = row[col_dept] if col_dept else ''
+                    popup_text = f"<b>{nombre}</b><br>Departamento: {dept}"
+                    folium.CircleMarker(
+                        location=[row.geometry.y, row.geometry.x],
+                        radius=5,
+                        popup=folium.Popup(popup_text, max_width=300),
+                        color='green',
+                        fill=True,
+                        fillColor='green',
+                        fillOpacity=0.7
+                    ).add_to(marker_cluster)
+                
+                folium.LayerControl().add_to(m)
+                folium_static(m, width=1200, height=600)
+            
+            st.info("💡 Haz clic en los clusters verdes para expandir y ver hospitales individuales.")
+            
+            st.divider()
+            
+            # MAPAS DE PROXIMIDAD CON CCPP
+            st.subheader("📍 Análisis de Proximidad por Centros Poblados")
+            st.markdown("Análisis de acceso a hospitales basado en centros poblados (CCPP) con buffer de 10 km.")
+            
+            # Análisis de Lima
+            st.markdown("### 🔴 Lima - Alta Densidad")
+            
+            with st.spinner('Analizando proximidad en Lima...'):
+                from estimation import analyze_proximity_department
+                from plots import create_ccpp_proximity_map
+                
+                resultado_lima, hosp_lima = analyze_proximity_department(
+                    gdf_ccpp, 
+                    st.session_state['gdf_hospitals'], 
+                    'LIMA',
+                    buffer_distance=10000
                 )
                 
-                folium_static(map_national, width=1200, height=600)
-            
-            st.info("💡 Haz clic en los clusters verdes para expandir y ver hospitales individuales. Puedes hacer zoom y navegar por todo el país.")
+                if resultado_lima is not None:
+                    aislado_lima = resultado_lima.loc[resultado_lima['NumHosp'].idxmin()]
+                    concentrado_lima = resultado_lima.loc[resultado_lima['NumHosp'].idxmax()]
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Centro Poblado Más Concentrado**")
+                        st.metric("Centro Poblado", concentrado_lima['CentroPoblado'])
+                        st.metric("Hospitales en 10km", int(concentrado_lima['NumHosp']))
+                        
+                        mapa_lima_conc = create_ccpp_proximity_map(
+                            resultado_lima, hosp_lima, 'LIMA', 
+                            concentrado_lima, tipo='concentrado'
+                        )
+                        folium_static(mapa_lima_conc, width=550, height=500)
+                    
+                    with col2:
+                        st.markdown("**Centro Poblado Más Aislado**")
+                        st.metric("Centro Poblado", aislado_lima['CentroPoblado'])
+                        st.metric("Hospitales en 10km", int(aislado_lima['NumHosp']))
+                        
+                        mapa_lima_ais = create_ccpp_proximity_map(
+                            resultado_lima, hosp_lima, 'LIMA', 
+                            aislado_lima, tipo='aislado'
+                        )
+                        folium_static(mapa_lima_ais, width=550, height=500)
             
             st.divider()
             
-            # MAPAS DE PROXIMIDAD
-            st.subheader("📍 Mapas de Proximidad por Región")
-            st.markdown("Los círculos de proximidad muestran el área de cobertura estimada de cada hospital. El radio varía según la densidad poblacional de la región.")
+            # Análisis de Loreto
+            st.markdown("### 🔵 Loreto - Baja Densidad")
             
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### 🔴 Lima - Alta Densidad")
-                st.markdown("**Radio de cobertura: 2.5 km**")
-                st.markdown("Lima tiene alta concentración de hospitales debido a la densidad poblacional.")
+            with st.spinner('Analizando proximidad en Loreto...'):
+                resultado_loreto, hosp_loreto = analyze_proximity_department(
+                    gdf_ccpp, 
+                    st.session_state['gdf_hospitals'], 
+                    'LORETO',
+                    buffer_distance=10000
+                )
                 
-                with st.spinner('Generando mapa de Lima...'):
-                    from plots import create_proximity_map_lima
+                if resultado_loreto is not None:
+                    aislado_loreto = resultado_loreto.loc[resultado_loreto['NumHosp'].idxmin()]
+                    concentrado_loreto = resultado_loreto.loc[resultado_loreto['NumHosp'].idxmax()]
                     
-                    map_lima = create_proximity_map_lima(
-                        st.session_state['gdf_hospitals'],
-                        gdf_districts
-                    )
+                    col1, col2 = st.columns(2)
                     
-                    folium_static(map_lima, width=550, height=500)
-            
-            with col2:
-                st.markdown("### 🔵 Loreto - Baja Densidad")
-                st.markdown("**Radio de cobertura: 10 km**")
-                st.markdown("Loreto tiene menor densidad de hospitales por la dispersión geográfica y poblacional.")
-                
-                with st.spinner('Generando mapa de Loreto...'):
-                    from plots import create_proximity_map_loreto
+                    with col1:
+                        st.markdown("**Centro Poblado Más Concentrado**")
+                        st.metric("Centro Poblado", concentrado_loreto['CentroPoblado'])
+                        st.metric("Hospitales en 10km", int(concentrado_loreto['NumHosp']))
+                        
+                        mapa_loreto_conc = create_ccpp_proximity_map(
+                            resultado_loreto, hosp_loreto, 'LORETO', 
+                            concentrado_loreto, tipo='concentrado'
+                        )
+                        folium_static(mapa_loreto_conc, width=550, height=500)
                     
-                    map_loreto = create_proximity_map_loreto(
-                        st.session_state['gdf_hospitals'],
-                        gdf_districts
-                    )
-                    
-                    folium_static(map_loreto, width=550, height=500)
+                    with col2:
+                        st.markdown("**Centro Poblado Más Aislado**")
+                        st.metric("Centro Poblado", aislado_loreto['CentroPoblado'])
+                        st.metric("Hospitales en 10km", int(aislado_loreto['NumHosp']))
+                        
+                        mapa_loreto_ais = create_ccpp_proximity_map(
+                            resultado_loreto, hosp_loreto, 'LORETO', 
+                            aislado_loreto, tipo='aislado'
+                        )
+                        folium_static(mapa_loreto_ais, width=550, height=500)
             
             st.divider()
             
-            # Comparación de densidades
-            st.subheader("📊 Comparación de Densidad")
+            # Comparación final
+            st.subheader("📊 Comparación Lima vs Loreto")
             
-            # Calcular estadísticas
-            col_dept = None
-            for c in st.session_state['gdf_hospitals'].columns:
-                if c.strip().lower() == 'departamento':
-                    col_dept = c
-                    break
-            
-            if col_dept:
-                lima_count = len(st.session_state['gdf_hospitals'][
-                    st.session_state['gdf_hospitals'][col_dept] == 'LIMA'
-                ])
-                loreto_count = len(st.session_state['gdf_hospitals'][
-                    st.session_state['gdf_hospitals'][col_dept] == 'LORETO'
-                ])
-                
+            if resultado_lima is not None and resultado_loreto is not None:
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    st.metric("🏥 Hospitales Lima", lima_count)
+                    st.metric("Promedio Lima", f"{resultado_lima['NumHosp'].mean():.1f}")
                 
                 with col2:
-                    st.metric("📍 Radio Lima", "2.5 km")
+                    st.metric("Máximo Lima", int(resultado_lima['NumHosp'].max()))
                 
                 with col3:
-                    st.metric("🏥 Hospitales Loreto", loreto_count)
+                    st.metric("Promedio Loreto", f"{resultado_loreto['NumHosp'].mean():.1f}")
                 
                 with col4:
-                    st.metric("📍 Radio Loreto", "10 km")
+                    st.metric("Máximo Loreto", int(resultado_loreto['NumHosp'].max()))
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
             
-            with st.expander("Ver error completos"):
+            with st.expander("Ver error completo"):
                 import traceback
                 st.code(traceback.format_exc())
