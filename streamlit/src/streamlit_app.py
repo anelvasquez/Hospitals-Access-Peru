@@ -410,15 +410,18 @@ with tab3:
         st.warning("⚠️ Primero carga los datos en la pestaña **'Descripción de Datos'**")
     else:
         try:
-            # Cargar shapefiles
+            # Cargar shapefiles (reutilizando el mismo código del Tab 2)
             @st.cache_data
             def load_all_shapefiles():
                 from estimation import load_districts_shapefile, load_ccpp_shapefile, merge_hospitals_with_districts
                 
-                # Distritos
+                # Distritos (mismo que Tab 2)
                 shapefile_path = '../data/v_distritos_2023.shp'
                 if not os.path.exists(shapefile_path):
                     shapefile_path = 'data/v_distritos_2023.shp'
+                if not os.path.exists(shapefile_path):
+                    raise FileNotFoundError("No se encontró v_distritos_2023.shp")
+                
                 gdf_dist = load_districts_shapefile(shapefile_path)
                 gdf_merged = merge_hospitals_with_districts(st.session_state['gdf_hospitals'], gdf_dist)
                 
@@ -426,12 +429,19 @@ with tab3:
                 ccpp_path = '../data/CCPP_IGN100K.shp'
                 if not os.path.exists(ccpp_path):
                     ccpp_path = 'data/CCPP_IGN100K.shp'
+                if not os.path.exists(ccpp_path):
+                 raise FileNotFoundError("No se encontró CCPP_IGN100K.shp")
+
                 gdf_ccpp = load_ccpp_shapefile(ccpp_path)
                 
                 return gdf_dist, gdf_merged, gdf_ccpp
             
             with st.spinner('📍 Cargando shapefiles...'):
                 gdf_districts, gdf_districts_merged, gdf_ccpp = load_all_shapefiles()
+            
+            st.success(f'✅ Datos cargados: {len(gdf_districts)} distritos, {len(gdf_ccpp)} centros poblados')
+            
+            st.divider()
             
             # MAPA 1: Nacional con Marcadores
             st.subheader("🗺️ Mapa Nacional: Ubicación de Hospitales")
@@ -520,6 +530,8 @@ with tab3:
                             aislado_lima, tipo='aislado'
                         )
                         folium_static(mapa_lima_ais, width=550, height=500)
+                else:
+                    st.warning("No se pudieron analizar los datos de Lima")
             
             st.divider()
             
@@ -561,6 +573,8 @@ with tab3:
                             aislado_loreto, tipo='aislado'
                         )
                         folium_static(mapa_loreto_ais, width=550, height=500)
+                else:
+                    st.warning("No se pudieron analizar los datos de Loreto")
             
             st.divider()
             
@@ -581,6 +595,10 @@ with tab3:
                 
                 with col4:
                     st.metric("Máximo Loreto", int(resultado_loreto['NumHosp'].max()))
+            
+        except FileNotFoundError as e:
+            st.error(f"❌ {str(e)}")
+            st.info("💡 Asegúrate de que los archivos estén en la carpeta **data/**")
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
