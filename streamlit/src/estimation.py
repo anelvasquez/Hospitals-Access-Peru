@@ -130,3 +130,78 @@ def count_hospitals_by_district(gdf):
         counts['UBIGEO'] = counts[col_dist].map(ubigeo_map)
     
     return counts
+
+def load_districts_shapefile(filepath):
+    """
+    Carga el shapefile de distritos del Perú.
+    Asume que está en EPSG:4326 (WGS84).
+    """
+    try:
+        gdf_districts = gpd.read_file(filepath)
+        
+        # Asegurar que esté en WGS84
+        if gdf_districts.crs != "EPSG:4326":
+            gdf_districts = gdf_districts.to_crs("EPSG:4326")
+        
+        print(f"Shapefile de distritos cargado: {len(gdf_districts)} distritos")
+        print(f"Columnas disponibles: {gdf_districts.columns.tolist()}")
+        
+        return gdf_districts
+    
+    except Exception as e:
+        print(f"Error al cargar shapefile: {e}")
+        return None
+
+def merge_hospitals_with_districts(gdf_hospitals, gdf_districts):
+    """
+    Cuenta hospitales por distrito y hace merge con el shapefile.
+    Retorna un GeoDataFrame con geometrías de distritos y conteo de hospitales.
+    """
+    # Buscar columna de distrito en hospitales
+    col_dist_hosp = None
+    for c in gdf_hospitals.columns:
+        if c.strip().lower() == "distrito":
+            col_dist_hosp = c
+            break
+    
+    if not col_dist_hosp:
+        print("No se encontró columna 'Distrito' en hospitales")
+        return gdf_districts
+    
+    # Contar hospitales por distrito
+    hospital_counts = gdf_hospitals[col_dist_hosp].value_counts().reset_index()
+    hospital_counts.columns = ['DISTRITO', 'n_hospitales']
+    
+    # Normalizar nombres de distritos (mayúsculas y sin espacios extra)
+    hospital_counts['DISTRITO'] = hospital_counts['DISTRITO'].str.upper().str.strip()
+    
+    # Buscar columna de distrito en shapefile (puede ser NOMBDIST, DISTRITO, etc.)
+    dist_col_shape = None
+    for col in gdf_districts.columns:
+        col_lower = col.lower()
+        if 'dist' in col_lower or 'nombdist' in col_lower:
+            dist_col_shape = col
+            break
+    
+    if dist_col_shape:
+        # Normalizar nombres en shapefile
+        gdf_districts = gdf_districts.copy()
+        gdf_districts['DISTRITO_NORM'] = gdf_districts[dist_col_shape].str.upper().str.strip()
+        
+        # Hacer merge
+        gdf_merged = gdf_districts.merge(
+            hospital_counts, 
+            left_on='DISTRITO_NORM', 
+            right_on='DISTRITO',
+            how='left'
+        )
+        
+        # Llenar NaN con 0 (distritos sin hospitales)
+        gdf_merged['n_hospitales'] = gdf_merged['n_hospitales'].fillna(0).astype(int)
+        
+        print(f"Merge completado: {len(gdf_merged)} distritos, {gdf_merged['n_hospitales'].sum()} hospitales totales")
+        
+        return gdf_merged
+    else:
+        print("No se encontró columna de distrito en shapefile")
+        return gdf_districts
