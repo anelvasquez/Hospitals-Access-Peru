@@ -261,7 +261,7 @@ with tab1:
             import traceback
             st.code(traceback.format_exc())
 
-# TAB 2: Análisis Estático (NUEVOS MAPAS)
+# TAB 2: Análisis Estático (3 MAPAS)
 with tab2:
     st.header("🗺️ Mapas Estáticos y Análisis por Departamento")
     
@@ -297,10 +297,10 @@ with tab2:
             
             st.divider()
             
-            # SECCIÓN 1: Mapa Nacional Coroplético
-            st.subheader("🗺️ Mapa Nacional: Hospitales por Distrito")
+            # MAPA 1: Distribución Nacional de Hospitales por Distrito
+            st.subheader("🗺️ Mapa 1: Distribución de Hospitales por Distrito")
             
-            with st.spinner('Generando mapa coroplético...'):
+            with st.spinner('Generando mapa nacional...'):
                 from plots import create_static_choropleth_map
                 
                 fig_choropleth = create_static_choropleth_map(
@@ -310,7 +310,7 @@ with tab2:
                 
                 st.pyplot(fig_choropleth)
             
-            # Estadísticas del mapa
+            # Estadísticas del mapa 1
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -327,65 +327,65 @@ with tab2:
             
             st.divider()
             
-            # SECCIÓN 2: Gráfico de Barras por Departamento
-            st.subheader("📊 Top 10 Departamentos")
+            # MAPA 2: Distritos sin Hospitales
+            st.subheader("🗺️ Mapa 2: Distritos sin Hospitales Públicos")
             
-            bar_chart = create_department_bar(st.session_state['gdf_hospitals'])
-            st.plotly_chart(bar_chart, use_container_width=True)
+            with st.spinner('Generando mapa de distritos sin hospitales...'):
+                from plots import create_zero_hospitals_map
+                
+                fig_zero = create_zero_hospitals_map(
+                    gdf_districts_merged,
+                    title="Distritos sin Hospitales Públicos"
+                )
+                
+                st.pyplot(fig_zero)
+            
+            st.info(f"📊 **{distritos_sin_hosp} distritos** ({(distritos_sin_hosp/len(gdf_districts_merged)*100):.1f}% del total) no cuentan con hospitales públicos")
             
             st.divider()
             
-            # SECCIÓN 3: Mapa por Departamento
-            st.subheader("🔍 Análisis por Departamento")
+            # MAPA 3: Top 10 Distritos con Más Hospitales
+            st.subheader("🗺️ Mapa 3: Top 10 Distritos con Más Hospitales")
             
-            departments = get_departments_list(st.session_state['gdf_hospitals'])
-            selected_dept = st.selectbox(
-                "Selecciona un departamento para ver su mapa:",
-                options=departments,
-                key='dept_selector_tab2'
-            )
+            with st.spinner('Generando mapa de top 10 distritos...'):
+                from plots import create_top10_hospitals_map
+                
+                fig_top10 = create_top10_hospitals_map(
+                    gdf_districts_merged,
+                    title="Top 10 Distritos con Mayor Número de Hospitales"
+                )
+                
+                st.pyplot(fig_top10)
             
-            if selected_dept:
-                with st.spinner(f'Generando mapa de {selected_dept}...'):
-                    from plots import create_department_static_map
-                    
-                    fig_dept = create_department_static_map(
-                        gdf_districts,
-                        st.session_state['gdf_hospitals'],
-                        selected_dept
-                    )
-                    
-                    st.pyplot(fig_dept)
-                
-                # Tabla de resumen del departamento
-                col_dept = None
-                for c in st.session_state['gdf_hospitals'].columns:
-                    if c.strip().lower() == "departamento":
-                        col_dept = c
-                        break
-                
-                if col_dept:
-                    gdf_dept = st.session_state['gdf_hospitals'][
-                        st.session_state['gdf_hospitals'][col_dept] == selected_dept
-                    ]
-                    
-                    # Contar por distrito
-                    col_dist = None
-                    for c in gdf_dept.columns:
-                        if c.strip().lower() == "distrito":
-                            col_dist = c
-                            break
-                    
-                    if col_dist:
-                        dist_counts = gdf_dept[col_dist].value_counts().reset_index()
-                        dist_counts.columns = ['Distrito', 'Cantidad de Hospitales']
-                        
-                        st.markdown(f"**📋 Hospitales por Distrito en {selected_dept}**")
-                        st.dataframe(
-                            dist_counts,
-                            use_container_width=True,
-                            height=300
-                        )
+            # Tabla del Top 10
+            top10_data = gdf_districts_merged.nlargest(10, 'n_hospitales')[['DISTRITO_NORM', 'n_hospitales']].copy()
+            top10_data.columns = ['Distrito', 'Número de Hospitales']
+            top10_data = top10_data.reset_index(drop=True)
+            top10_data.index = top10_data.index + 1
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.markdown("**📋 Ranking de Distritos**")
+                st.dataframe(
+                    top10_data,
+                    use_container_width=True,
+                    height=400
+                )
+            
+            with col2:
+                st.markdown("**📈 Estadísticas Top 10**")
+                st.metric("Total hospitales Top 10", f"{int(top10_data['Número de Hospitales'].sum()):,}")
+                st.metric("Promedio por distrito", f"{top10_data['Número de Hospitales'].mean():.1f}")
+                st.metric("Máximo", f"{int(top10_data['Número de Hospitales'].max()):,}")
+            
+            st.divider()
+            
+            # Gráfico de Barras por Departamento
+            st.subheader("📊 Top 10 Departamentos con Más Hospitales")
+            
+            bar_chart = create_department_bar(st.session_state['gdf_hospitals'])
+            st.plotly_chart(bar_chart, use_container_width=True)
             
         except FileNotFoundError as e:
             st.error("❌ No se encontró el archivo v_distritos_2023.shp")
