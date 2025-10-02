@@ -56,7 +56,7 @@ with tab1:
     with col2:
         st.info("Solo hospitales con estado **'ACTIVO'**")
         st.info("Solo registros con coordenadas válidas (NORTE y ESTE)")
-        st.info("Exclusión de coordenadas (0, 0) o valores nuloss")
+        st.info("Exclusión de coordenadas (0, 0) o valores nulos")
     
     st.divider()
     
