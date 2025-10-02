@@ -14,7 +14,7 @@ def create_hospital_map(gdf_hospitals, gdf_districts=None):
         gdf_hospitals,
         lat=gdf_hospitals.geometry.y,
         lon=gdf_hospitals.geometry.x,
-        hover_name='Nombre del establecimiento',
+        hover_name='Nombre del establecimientos',
         hover_data=['Departamento', 'Provincia', 'Distrito', 'Categoria'],
         zoom=5,
         height=600
