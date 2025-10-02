@@ -423,9 +423,9 @@ with tab3:
                 gdf_merged = merge_hospitals_with_districts(st.session_state['gdf_hospitals'], gdf_dist)
                 
                 # CCPP
-                ccpp_path = '../data/centro_poblados.shp'
+                ccpp_path = '../data/CCPP_IGN100K.shp'
                 if not os.path.exists(ccpp_path):
-                    ccpp_path = 'data/centro_poblados.shp'
+                ccpp_path = 'data/CCPP_IGN100K.shp'
                 gdf_ccpp = load_ccpp_shapefile(ccpp_path)
                 
                 return gdf_dist, gdf_merged, gdf_ccpp
