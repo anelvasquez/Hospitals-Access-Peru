@@ -27,7 +27,7 @@ def create_hospital_map(gdf_hospitals, gdf_districts=None):
 
 def create_department_bar(gdf_hospitals):
     """
-    Gráfico de barras por departamentos
+    Gráfico de barras por departamento
     """
     dept_counts = gdf_hospitals['Departamento'].dropna().value_counts().head(10)
     
@@ -162,34 +162,52 @@ def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
     else:
         gdf_dist_dept = gdf_districts
     
-    # Crear mapa más grande
-    fig, ax = plt.subplots(1, 1, figsize=(14, 12))
+    # Verificar que hay datos
+    if len(gdf_dist_dept) == 0:
+        print(f"No se encontraron distritos para {department_name}")
+        return None
     
-    # Dibujar distritos
+    # Crear mapa más grande con mejor aspect ratio
+    fig, ax = plt.subplots(1, 1, figsize=(16, 14))
+    
+    # Dibujar distritos con mejor contraste
     gdf_dist_dept.plot(
         ax=ax,
-        color='lightgray',
-        edgecolor='black',
-        linewidth=0.5,
-        alpha=0.5
+        color='#e8f4f8',
+        edgecolor='#2c3e50',
+        linewidth=0.8,
+        alpha=0.6
     )
     
-    # Dibujar hospitales
+    # Dibujar hospitales con puntos más grandes
     if len(gdf_hosp_dept) > 0:
         gdf_hosp_dept.plot(
             ax=ax,
-            color='green',
-            markersize=80,
-            alpha=0.7
+            color='#00a650',
+            markersize=120,
+            alpha=0.8,
+            edgecolor='darkgreen',
+            linewidth=1.5
         )
     
+    # Título más prominente
     ax.set_title(f'Hospitales en {department_name}\n({len(gdf_hosp_dept)} hospitales)', 
-                 fontsize=18, fontweight='bold', pad=20)
-    ax.axis('off')
+                 fontsize=22, fontweight='bold', pad=25)
     
-    # Leyenda más grande
-    green_patch = mpatches.Patch(color='green', label=f'Hospitales ({len(gdf_hosp_dept)})')
-    ax.legend(handles=[green_patch], loc='best', fontsize=14)
+    # Remover ejes pero mantener el mapa
+    ax.set_axis_off()
+    
+    # Ajustar límites al departamento
+    minx, miny, maxx, maxy = gdf_dist_dept.total_bounds
+    margin = 0.05
+    width = maxx - minx
+    height = maxy - miny
+    ax.set_xlim(minx - margin * width, maxx + margin * width)
+    ax.set_ylim(miny - margin * height, maxy + margin * height)
+    
+    # Leyenda más visible
+    green_patch = mpatches.Patch(color='#00a650', label=f'Hospitales ({len(gdf_hosp_dept)})')
+    ax.legend(handles=[green_patch], loc='upper right', fontsize=16, frameon=True, fancybox=True, shadow=True)
     
     plt.tight_layout()
     return fig
