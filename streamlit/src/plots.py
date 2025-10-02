@@ -6,7 +6,7 @@ import folium
 from folium import plugins
 
 def create_hospital_map(gdf_hospitals, gdf_districts=None):
-    """Crea mapa interactivo de hospitales"""
+    """Crea mapa interactivo de hospitaless"""
     fig = px.scatter_mapbox(
         gdf_hospitals,
         lat=gdf_hospitals.geometry.y,
