@@ -50,17 +50,9 @@ def create_department_bar(gdf_hospitals):
 def create_static_choropleth_map(gdf_districts_with_counts, title="Hospitales por Distrito"):
     """
     Crea un mapa coroplético estático con matplotlib/geopandas.
-    
-    Args:
-        gdf_districts_with_counts: GeoDataFrame con geometrías de distritos y columna 'n_hospitales'
-        title: Título del mapa
-    
-    Returns:
-        fig: Figura de matplotlib
     """
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     
-    # Mapa coroplético
     gdf_districts_with_counts.plot(
         column='n_hospitales',
         ax=ax,
@@ -81,141 +73,78 @@ def create_static_choropleth_map(gdf_districts_with_counts, title="Hospitales po
     plt.tight_layout()
     return fig
 
-def create_static_map_with_points(gdf_districts, gdf_hospitals, title="Mapa de Hospitales"):
+def create_zero_hospitals_map(gdf_districts_with_counts, title="Distritos sin Hospitales"):
     """
-    Crea un mapa estático con distritos y puntos de hospitales.
-    
-    Args:
-        gdf_districts: GeoDataFrame con geometrías de distritos
-        gdf_hospitals: GeoDataFrame con puntos de hospitales
-        title: Título del mapa
-    
-    Returns:
-        fig: Figura de matplotlib
+    Crea un mapa mostrando solo los distritos con cero hospitales en rojo.
     """
-    fig, ax = plt.subplots(1, 1, figsize=(15, 12))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     
-    # Dibujar distritos (fondo gris claro)
-    gdf_districts.plot(
+    gdf_plot = gdf_districts_with_counts.copy()
+    
+    gdf_plot['color'] = gdf_plot['n_hospitales'].apply(
+        lambda x: '#ff0000' if x == 0 else '#e0e0e0'
+    )
+    
+    gdf_plot.plot(
         ax=ax,
-        color='lightgray',
+        color=gdf_plot['color'],
+        edgecolor='black',
+        linewidth=0.3,
+        alpha=0.7
+    )
+    
+    n_zero = (gdf_districts_with_counts['n_hospitales'] == 0).sum()
+    
+    ax.set_title(f'{title}\n({n_zero} distritos sin hospitales)', 
+                 fontsize=14, fontweight='bold', pad=15)
+    ax.axis('off')
+    
+    red_patch = mpatches.Patch(color='#ff0000', label=f'Sin hospitales ({n_zero})')
+    gray_patch = mpatches.Patch(color='#e0e0e0', label='Con hospitales')
+    ax.legend(handles=[red_patch, gray_patch], loc='lower right', fontsize=11)
+    
+    plt.tight_layout()
+    return fig
+
+def create_top10_hospitals_map(gdf_districts_with_counts, title="Top 10 Distritos con Más Hospitales"):
+    """
+    Crea un mapa destacando los 10 distritos con más hospitales.
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    
+    gdf_plot = gdf_districts_with_counts.copy()
+    
+    top10_threshold = gdf_plot.nlargest(10, 'n_hospitales')['n_hospitales'].min()
+    gdf_plot['is_top10'] = gdf_plot['n_hospitales'] >= top10_threshold
+    
+    gdf_not_top10 = gdf_plot[~gdf_plot['is_top10']]
+    gdf_not_top10.plot(
+        ax=ax,
+        color='#e0e0e0',
         edgecolor='black',
         linewidth=0.3,
         alpha=0.5
     )
     
-    # Dibujar hospitales (puntos verdes)
-    gdf_hospitals.plot(
-        ax=ax,
-        color='green',
-        markersize=20,
-        alpha=0.7,
-        label='Hospitales'
-    )
-    
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
-    ax.axis('off')
-    
-    # Leyenda
-    green_patch = mpatches.Patch(color='green', label='Hospitales')
-    ax.legend(handles=[green_patch], loc='lower right', fontsize=12)
-    
-    plt.tight_layout()
-    return fig
-
-def create_department_static_map(gdf_districts, gdf_hospitals, department_name):
-    """
-    Crea un mapa estático para un departamento específico.
-    
-    Args:
-        gdf_districts: GeoDataFrame completo de distritos
-        gdf_hospitals: GeoDataFrame completo de hospitales
-        department_name: Nombre del departamento a filtrar
-    
-    Returns:
-        fig: Figura de matplotlib
-    """
-    # Buscar columna de departamento en hospitales
-    col_dept_hosp = None
-    for c in gdf_hospitals.columns:
-        if c.strip().lower() == "departamento":
-            col_dept_hosp = c
-            break
-    
-    # Filtrar hospitales del departamento
-    if col_dept_hosp:
-        gdf_hosp_dept = gdf_hospitals[gdf_hospitals[col_dept_hosp] == department_name]
-    else:
-        gdf_hosp_dept = gdf_hospitals
-    
-    # Buscar columna de departamento en distritos
-    col_dept_dist = None
-    for col in gdf_districts.columns:
-        col_lower = col.lower()
-        if 'depa' in col_lower or 'nombdepa' in col_lower:
-            col_dept_dist = col
-            break
-    
-    # Filtrar distritos del departamento
-    if col_dept_dist:
-        gdf_dist_dept = gdf_districts[gdf_districts[col_dept_dist].str.upper() == department_name.upper()]
-    else:
-        gdf_dist_dept = gdf_districts
-    
-    # Verificar que hay datos
-    if len(gdf_dist_dept) == 0:
-        print(f"No se encontraron distritos para {department_name}")
-        return None
-    
-    # Calcular aspect ratio basado en los límites del departamento
-    minx, miny, maxx, maxy = gdf_dist_dept.total_bounds
-    width = maxx - minx
-    height = maxy - miny
-    aspect = width / height if height > 0 else 1
-    
-    # Ajustar figsize para mantener proporciones
-    if aspect > 1:
-        figsize = (14, 14/aspect)
-    else:
-        figsize = (14*aspect, 14)
-    
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    
-    # Dibujar distritos con paleta azul
-    gdf_dist_dept.plot(
-        ax=ax,
-        color='#e3f2fd',
-        edgecolor='#1976d2',
-        linewidth=0.8,
-        alpha=0.6
-    )
-    
-    # Dibujar hospitales con puntos verdes
-    if len(gdf_hosp_dept) > 0:
-        gdf_hosp_dept.plot(
+    gdf_top10 = gdf_plot[gdf_plot['is_top10']]
+    if len(gdf_top10) > 0:
+        gdf_top10.plot(
+            column='n_hospitales',
             ax=ax,
-            color='#00a650',
-            markersize=120,
-            alpha=0.8,
+            cmap='Greens',
             edgecolor='darkgreen',
-            linewidth=1.5
+            linewidth=0.8,
+            alpha=0.9,
+            legend=True,
+            legend_kwds={
+                'label': "Número de Hospitales",
+                'orientation': "vertical",
+                'shrink': 0.6
+            }
         )
     
-    # Título más prominente
-    ax.set_title(f'Hospitales en {department_name}\n({len(gdf_hosp_dept)} hospitales)', 
-                 fontsize=14, fontweight='bold', pad=16)
-    
-    # Remover ejes
-    ax.set_axis_off()
-    
-    # Ajustar límites al departamento con margen
-    margin = 0.05
-    ax.set_xlim(minx - margin * width, maxx + margin * width)
-    ax.set_ylim(miny - margin * height, maxy + margin * height)
-    
-    # Leyenda más visible
-    green_patch = mpatches.Patch(color='#00a650', label=f'Hospitales ({len(gdf_hosp_dept)})')
-    ax.legend(handles=[green_patch], loc='upper right', fontsize=16, frameon=True, fancybox=True, shadow=True)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=15)
+    ax.axis('off')
     
     plt.tight_layout()
     return fig
