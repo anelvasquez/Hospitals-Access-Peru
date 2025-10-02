@@ -7,7 +7,7 @@ matplotlib.use('Agg')  # Backend para Streamlit
 
 # Configuración de página
 st.set_page_config(
-    page_title="Hospitales en Perús",
+    page_title="Hospitales en Perú",
     page_icon="🏥",
     layout="wide"
 )
