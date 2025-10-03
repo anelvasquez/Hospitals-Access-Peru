@@ -1,0 +1,7 @@
+# Archivo: packages.txt
+# Estas son las dependencias de sistema (binarias) necesarias para GeoPandas
+
+gdal
+libgdal-dev
+libgeos-dev
+libproj-dev
