@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import geopandas as gpd
 import os
 from estimation import load_and_filter_ipress, get_data_summary, get_departments_list
 from plots import create_hospital_map, create_department_bar
